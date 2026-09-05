@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { View, StyleSheet, TextInput, TouchableOpacity, Text, Alert, KeyboardAvoidingView, Platform } from 'react-native';
-import { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 
 export const LoginScreen = ({ navigation }: any) => {
@@ -9,9 +8,13 @@ export const LoginScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(false);
   const authContext = useContext(AuthContext);
 
+  if (!authContext) {
+    return null;
+  }
+
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert('Validation Error', 'Please fill in all fields');
       return;
     }
 
@@ -19,19 +22,20 @@ export const LoginScreen = ({ navigation }: any) => {
       setLoading(true);
       await authContext.signIn(email, password);
     } catch (error: any) {
-      Alert.alert('Login Failed', error.message);
+      Alert.alert('Sign In Failed', error.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
       <View style={styles.content}>
         <Text style={styles.title}>MobiBiz AI</Text>
+        <Text style={styles.tagline}>Your Smart Everyday Business Assistant</Text>
         <Text style={styles.subtitle}>Sign In</Text>
 
         <TextInput
@@ -42,6 +46,7 @@ export const LoginScreen = ({ navigation }: any) => {
           editable={!loading}
           keyboardType="email-address"
           autoCapitalize="none"
+          placeholderTextColor="#999"
         />
 
         <TextInput
@@ -51,6 +56,7 @@ export const LoginScreen = ({ navigation }: any) => {
           onChangeText={setPassword}
           editable={!loading}
           secureTextEntry
+          placeholderTextColor="#999"
         />
 
         <TouchableOpacity
@@ -64,6 +70,8 @@ export const LoginScreen = ({ navigation }: any) => {
         <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
           <Text style={styles.link}>Forgot Password?</Text>
         </TouchableOpacity>
+
+        <View style={styles.divider} />
 
         <View style={styles.signupContainer}>
           <Text style={styles.signupText}>Don't have an account? </Text>
@@ -92,7 +100,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1F97D4',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
+  },
+  tagline: {
+    fontSize: 12,
+    color: '#888',
+    textAlign: 'center',
+    marginBottom: 24,
   },
   subtitle: {
     fontSize: 18,
@@ -108,6 +122,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 16,
     fontSize: 16,
+    color: '#333',
   },
   button: {
     backgroundColor: '#1F97D4',
@@ -130,10 +145,14 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 14,
   },
+  divider: {
+    height: 1,
+    backgroundColor: '#e0e0e0',
+    marginVertical: 24,
+  },
   signupContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 24,
   },
   signupText: {
     color: '#666',

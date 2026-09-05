@@ -1,39 +1,25 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
-
-interface Business {
-  id?: string;
-  userId: string;
-  name: string;
-  type: string;
-  ownerName: string;
-  phone: string;
-  email: string;
-  address: string;
-  currency: string;
-  logo?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-interface UserProfile {
-  uid: string;
-  email: string;
-  displayName?: string;
-  photoURL?: string;
-  createdAt: Date;
-  updatedAt: Date;
-  hasCompletedSetup: boolean;
-  isPremium: boolean;
-}
+import React, { createContext, useContext, useEffect, useCallback, useState } from 'react';
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  collection,
+  getDocs,
+  serverTimestamp,
+  query,
+  limit,
+} from 'firebase/firestore';
+import { getFirebaseAuth, getFirebaseDb } from '../services/firebase.service';
+import { Business, validateBusiness, firestoreTimestampToDate } from '../types';
+import { useAuth } from './AuthContext';
 
 interface BusinessContextType {
   business: Business | null;
-  userProfile: UserProfile | null;
   loading: boolean;
+  error: string | null;
   createBusiness: (data: Omit<Business, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
-  updateBusiness: (data: Partial<Business>) => Promise<void>;
+  updateBusiness: (data: Partial<Omit<Business, 'userId'>>) => Promise<void>;
   fetchBusiness: () => Promise<void>;
 }
 
@@ -41,116 +27,157 @@ const BusinessContext = createContext<BusinessContextType | undefined>(undefined
 
 export const BusinessProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [business, setBusiness] = useState<Business | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const auth = getAuth();
-  const db = getFirestore();
+  const auth = getFirebaseAuth();
+  const db = getFirebaseDb();
+  const { state: authState } = useAuth();
 
-  const fetchBusiness = async () => {
+  const fetchBusiness = useCallback(async () => {
     try {
       setLoading(true);
-      const currentUser = auth.currentUser;
-      
+      setError(null);
+
+      const currentUser = authState.user;
       if (!currentUser) {
+        setBusiness(null);
         setLoading(false);
         return;
       }
 
-      // Fetch user profile
-      const userDocRef = doc(db, 'users', currentUser.uid);
-      const userDocSnap = await getDoc(userDocRef);
-      
-      if (userDocSnap.exists()) {
-        setUserProfile(userDocSnap.data() as UserProfile);
-      }
-
-      // Fetch user's business
+      // Fetch user's business (currently supports one business per user)
       const businessesRef = collection(db, `users/${currentUser.uid}/businesses`);
-      const businessQuery = query(businessesRef);
+      const businessQuery = query(businessesRef, limit(1));
       const businessSnap = await getDocs(businessQuery);
-      
+
       if (!businessSnap.empty) {
-        const businessData = businessSnap.docs[0].data() as Business;
-        businessData.id = businessSnap.docs[0].id;
-        setBusiness(businessData);
+        const doc = businessSnap.docs[0];
+        const validatedBusiness = validateBusiness(doc.data(), doc.id);
+        setBusiness(validatedBusiness);
+      } else {
+        setBusiness(null);
       }
-    } catch (error) {
-      console.error('Error fetching business:', error);
+    } catch (err: any) {
+      const message = err.message || 'Failed to fetch business';
+      setError(message);
+      console.error('Error fetching business:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [authState.user, db]);
 
-  const createBusiness = async (data: Omit<Business, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
-    try {
-      const currentUser = auth.currentUser;
-      if (!currentUser) throw new Error('No authenticated user');
+  const createBusiness = useCallback(
+    async (data: Omit<Business, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
+      try {
+        setError(null);
+        const currentUser = authState.user;
+        if (!currentUser) {
+          throw new Error('User not authenticated');
+        }
 
-      const businessDocRef = doc(collection(db, `users/${currentUser.uid}/businesses`));
-      const now = new Date();
-      
-      const newBusiness: Business = {
-        ...data,
-        userId: currentUser.uid,
-        createdAt: now,
-        updatedAt: now,
-      };
+        // Create new business document
+        // Security: userId is always set to current user, never from client data
+        const businessDocRef = doc(collection(db, `users/${currentUser.uid}/businesses`));
 
-      await setDoc(businessDocRef, newBusiness);
-      newBusiness.id = businessDocRef.id;
-      setBusiness(newBusiness);
+        const businessData = {
+          ...data,
+          userId: currentUser.uid, // Immutable - always current user
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        };
 
-      // Update user profile
-      const userDocRef = doc(db, 'users', currentUser.uid);
-      await setDoc(userDocRef, {
-        uid: currentUser.uid,
-        email: currentUser.email,
-        displayName: currentUser.displayName,
-        photoURL: currentUser.photoURL,
-        createdAt: now,
-        updatedAt: now,
-        hasCompletedSetup: true,
-        isPremium: false,
-      }, { merge: true });
-    } catch (error) {
-      console.error('Error creating business:', error);
-      throw error;
-    }
-  };
+        await setDoc(businessDocRef, businessData);
 
-  const updateBusiness = async (data: Partial<Business>) => {
-    try {
-      const currentUser = auth.currentUser;
-      if (!currentUser || !business?.id) throw new Error('Missing required data');
+        // Create local representation
+        const newBusiness: Business = {
+          id: businessDocRef.id,
+          ...data,
+          userId: currentUser.uid,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
 
-      const businessDocRef = doc(db, `users/${currentUser.uid}/businesses`, business.id);
-      await setDoc(businessDocRef, { ...data, updatedAt: new Date() }, { merge: true });
-      
-      setBusiness(prev => prev ? { ...prev, ...data, updatedAt: new Date() } : null);
-    } catch (error) {
-      console.error('Error updating business:', error);
-      throw error;
-    }
-  };
+        setBusiness(newBusiness);
 
+        // Update user profile to mark setup as completed
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        await setDoc(
+          userDocRef,
+          {
+            hasCompletedSetup: true,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      } catch (err: any) {
+        const message = err.message || 'Failed to create business';
+        setError(message);
+        throw new Error(message);
+      }
+    },
+    [authState.user, db]
+  );
+
+  const updateBusiness = useCallback(
+    async (data: Partial<Omit<Business, 'userId'>>) => {
+      try {
+        setError(null);
+        const currentUser = authState.user;
+        if (!currentUser || !business?.id) {
+          throw new Error('Missing required data');
+        }
+
+        // Security: Never allow userId to be changed
+        const safeData = { ...data };
+        delete (safeData as any).userId;
+
+        const businessDocRef = doc(db, `users/${currentUser.uid}/businesses`, business.id);
+        await setDoc(
+          businessDocRef,
+          {
+            ...safeData,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+
+        // Update local state
+        const updatedBusiness: Business = {
+          ...business,
+          ...safeData,
+          updatedAt: new Date(),
+        };
+        setBusiness(updatedBusiness);
+      } catch (err: any) {
+        const message = err.message || 'Failed to update business';
+        setError(message);
+        throw new Error(message);
+      }
+    },
+    [authState.user, business, db]
+  );
+
+  // Fetch business when user changes
   useEffect(() => {
-    const currentUser = auth.currentUser;
-    if (currentUser) {
+    if (authState.user) {
       fetchBusiness();
+    } else {
+      setBusiness(null);
+      setLoading(false);
     }
-  }, [auth.currentUser]);
+  }, [authState.user, fetchBusiness]);
 
   return (
-    <BusinessContext.Provider value={{ business, userProfile, loading, createBusiness, updateBusiness, fetchBusiness }}>
+    <BusinessContext.Provider value={{ business, loading, error, createBusiness, updateBusiness, fetchBusiness }}>
       {children}
     </BusinessContext.Provider>
   );
 };
 
-export const useBusiness = () => {
+export const useBusiness = (): BusinessContextType => {
   const context = useContext(BusinessContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useBusiness must be used within BusinessProvider');
   }
   return context;

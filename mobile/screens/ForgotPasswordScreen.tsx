@@ -9,9 +9,13 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
   const [sent, setSent] = useState(false);
   const authContext = useContext(AuthContext);
 
+  if (!authContext) {
+    return null;
+  }
+
   const handleResetPassword = async () => {
     if (!email) {
-      Alert.alert('Error', 'Please enter your email');
+      Alert.alert('Validation Error', 'Please enter your email');
       return;
     }
 
@@ -29,7 +33,7 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
@@ -45,6 +49,7 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
           editable={!loading}
           keyboardType="email-address"
           autoCapitalize="none"
+          placeholderTextColor="#999"
         />
 
         <TouchableOpacity
@@ -95,6 +100,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 16,
     fontSize: 16,
+    color: '#333',
   },
   button: {
     backgroundColor: '#1F97D4',

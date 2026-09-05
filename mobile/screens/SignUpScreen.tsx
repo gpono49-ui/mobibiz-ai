@@ -10,25 +10,30 @@ export const SignUpScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(false);
   const authContext = useContext(AuthContext);
 
+  if (!authContext) {
+    return null;
+  }
+
   const handleSignUp = async () => {
     if (!email || !password || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert('Validation Error', 'Please fill in all fields');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      Alert.alert('Validation Error', 'Passwords do not match');
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+      Alert.alert('Validation Error', 'Password must be at least 6 characters');
       return;
     }
 
     try {
       setLoading(true);
       await authContext.signUp(email, password);
+      // Note: User profile is created by Cloud Function, not here
     } catch (error: any) {
       Alert.alert('Sign Up Failed', error.message);
     } finally {
@@ -37,12 +42,13 @@ export const SignUpScreen = ({ navigation }: any) => {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
       <View style={styles.content}>
         <Text style={styles.title}>MobiBiz AI</Text>
+        <Text style={styles.tagline}>Your Smart Everyday Business Assistant</Text>
         <Text style={styles.subtitle}>Create Account</Text>
 
         <TextInput
@@ -53,6 +59,7 @@ export const SignUpScreen = ({ navigation }: any) => {
           editable={!loading}
           keyboardType="email-address"
           autoCapitalize="none"
+          placeholderTextColor="#999"
         />
 
         <TextInput
@@ -62,6 +69,7 @@ export const SignUpScreen = ({ navigation }: any) => {
           onChangeText={setPassword}
           editable={!loading}
           secureTextEntry
+          placeholderTextColor="#999"
         />
 
         <TextInput
@@ -71,6 +79,7 @@ export const SignUpScreen = ({ navigation }: any) => {
           onChangeText={setConfirmPassword}
           editable={!loading}
           secureTextEntry
+          placeholderTextColor="#999"
         />
 
         <TouchableOpacity
@@ -80,6 +89,8 @@ export const SignUpScreen = ({ navigation }: any) => {
         >
           <Text style={styles.buttonText}>{loading ? 'Creating account...' : 'Sign Up'}</Text>
         </TouchableOpacity>
+
+        <View style={styles.divider} />
 
         <View style={styles.loginContainer}>
           <Text style={styles.loginText}>Already have an account? </Text>
@@ -108,7 +119,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1F97D4',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
+  },
+  tagline: {
+    fontSize: 12,
+    color: '#888',
+    textAlign: 'center',
+    marginBottom: 24,
   },
   subtitle: {
     fontSize: 18,
@@ -124,6 +141,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 16,
     fontSize: 16,
+    color: '#333',
   },
   button: {
     backgroundColor: '#1F97D4',
@@ -140,10 +158,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  divider: {
+    height: 1,
+    backgroundColor: '#e0e0e0',
+    marginVertical: 24,
+  },
   loginContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 24,
   },
   loginText: {
     color: '#666',
