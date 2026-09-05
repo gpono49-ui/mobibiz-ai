@@ -1,0 +1,98 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(uid) {
+      return get(/databases/$(database)/documents/admins/owner).data.uid == uid;
+    }
+    
+    function isOwnUser(uid) {
+      return request.auth.uid == uid;
+    }
+    
+    function hasValidSubscription(uid) {
+      let subscription = get(/databases/$(database)/documents/subscriptions/$(uid)).data;
+      return subscription != null && subscription.status == 'active' && subscription.expiryDate > now;
+    }
+    
+    // Owner/Super Admin only
+    match /admins/owner {
+      allow read, write: if isAuthenticated() && isOwner(request.auth.uid);
+    }
+    
+    // Admin settings
+    match /adminSettings/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isOwner(request.auth.uid);
+    }
+    
+    // Users collection
+    match /users/{uid} {
+      allow read: if isOwnUser(uid) || (isAuthenticated() && isOwner(request.auth.uid));
+      allow create: if request.auth.uid == uid && request.auth.token.email_verified == false;
+      allow update: if isOwnUser(uid);
+      allow delete: if isOwnUser(uid) || (isAuthenticated() && isOwner(request.auth.uid));
+      
+      // User's business data - users can only access their own
+      match /businesses/{document=**} {
+        allow read, write: if isOwnUser(uid);
+      }
+      
+      match /sales/{document=**} {
+        allow read, write: if isOwnUser(uid);
+      }
+      
+      match /expenses/{document=**} {
+        allow read, write: if isOwnUser(uid);
+      }
+      
+      match /products/{document=**} {
+        allow read, write: if isOwnUser(uid);
+      }
+      
+      match /customers/{document=**} {
+        allow read, write: if isOwnUser(uid);
+      }
+      
+      match /invoices/{document=**} {
+        allow read, write: if isOwnUser(uid);
+      }
+      
+      match /receipts/{document=**} {
+        allow read, write: if isOwnUser(uid);
+      }
+    }
+    
+    // Subscriptions - only owner and subscription owner can read
+    match /subscriptions/{uid} {
+      allow read: if isOwnUser(uid) || (isAuthenticated() && isOwner(request.auth.uid));
+      allow write: if isAuthenticated() && isOwner(request.auth.uid);
+    }
+    
+    // Public content - Help Center, FAQ
+    match /helpCenter/{document=**} {
+      allow read: if true;
+      allow write: if isAuthenticated() && isOwner(request.auth.uid);
+    }
+    
+    match /faq/{document=**} {
+      allow read: if true;
+      allow write: if isAuthenticated() && isOwner(request.auth.uid);
+    }
+    
+    match /announcements/{document=**} {
+      allow read: if true;
+      allow write: if isAuthenticated() && isOwner(request.auth.uid);
+    }
+    
+    // Analytics - owner and self can read
+    match /analytics/{uid} {
+      allow read: if isOwnUser(uid) || (isAuthenticated() && isOwner(request.auth.uid));
+      allow write: if isAuthenticated() && isOwner(request.auth.uid);
+    }
+  }
+}

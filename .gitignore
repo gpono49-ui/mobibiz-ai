@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Mobile
+.expo/
+.expo-shared/
+dist/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build
+build/
+dist/
+.next/
+out/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Firebase
+.runtimeconfig.json
+
+# Config
+config.local.js
+
+# iOS/Android build
+io/
+android/
+ios/
+android.aar
+*.aar
+
+# Test coverage
+coverage/
+.nyc_output/

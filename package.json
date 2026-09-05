@@ -1,0 +1,16 @@
+{
+  "name": "mobibiz-ai",
+  "version": "1.0.0",
+  "description": "MobiBiz AI - Smart Everyday Business Assistant",
+  "private": true,
+  "scripts": {
+    "install-all": "npm install && cd mobile && npm install && cd ../backend/functions && npm install && cd ../../admin-dashboard && npm install",
+    "mobile:start": "cd mobile && npm start",
+    "mobile:build": "cd mobile && eas build --platform android",
+    "backend:deploy": "cd backend/functions && npm run deploy",
+    "admin:dev": "cd admin-dashboard && npm run dev",
+    "admin:build": "cd admin-dashboard && npm run build",
+    "test:all": "npm test --recursive",
+    "lint:all": "eslint . --ext .ts,.tsx,.js,.jsx"
+  }
+}
