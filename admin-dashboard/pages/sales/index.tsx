@@ -38,12 +38,16 @@ type Sale = {
   unitPrice: number;
   discount: number;
   total: number;
-  paidAmount: number;
+  paid: number; // standardized paid field
+  paidAmount?: number; // legacy
   outstanding: number;
   customerId?: string | null;
+  customerName?: string | null;
   paymentMethod?: string | null;
   createdAt?: any;
   userId?: string;
+  items?: any[];
+  date?: any;
 };
 
 export default function SalesPage() {
@@ -122,12 +126,16 @@ export default function SalesPage() {
           unitPrice: Number(data.unitPrice) || 0,
           discount: Number(data.discount) || 0,
           total: Number(data.total) || 0,
+          paid: Number(data.paid ?? data.paidAmount) || 0,
           paidAmount: Number(data.paidAmount) || 0,
           outstanding: Number(data.outstanding) || 0,
           customerId: data.customerId || null,
+          customerName: data.customerName || null,
           paymentMethod: data.paymentMethod || null,
           createdAt: data.createdAt,
           userId: data.userId,
+          items: data.items || [],
+          date: data.date || data.createdAt,
         });
       });
       setSales(items);
@@ -193,6 +201,9 @@ export default function SalesPage() {
         tx.update(prodRef as any, { quantity: newQty, updatedAt: serverTimestamp() });
 
         const saleRef = doc(salesCol);
+        const customer = customers.find((c) => c.id === customerId);
+        const saleItems = [{ productId, name: prodData.name || '', quantity, unitPrice: unit, discount: disc }];
+
         tx.set(saleRef as any, {
           productId: productId,
           productName: prodData.name || '',
@@ -200,12 +211,17 @@ export default function SalesPage() {
           unitPrice: unit,
           discount: disc,
           total,
+          // write both for compatibility; prefer 'paid'
+          paid,
           paidAmount: paid,
           outstanding,
           customerId: customerId || null,
+          customerName: customer ? customer.name : null,
           paymentMethod: paymentMethod || null,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
+          date: serverTimestamp(),
+          items: saleItems,
           userId: user.uid,
         });
       });
