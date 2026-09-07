@@ -166,7 +166,8 @@ export default function ExpensesPage() {
     }
   }
 
-  async function confirmDelete() {
+  // renamed from confirmDelete -> doDelete to avoid naming collision with state
+  async function doDelete() {
     if (!user || !confirmDelete) return;
     setBusy(true);
     try {
@@ -284,7 +285,7 @@ export default function ExpensesPage() {
                 </div>
                 <div>
                   <label>Date</label>
-                  <input type="date" value={form.date && form.date.toDate ? form.date.toDate().toISOString().slice(0,10) : form.date instanceof Date ? form.date.toISOString().slice(0,10) : ''} onChange={(e) => setForm({ ...form, date: new Date(e.target.value) as any })} style={{ width: '100%', padding: 8 }} />
+                  <input type="date" value={form.date && form.date.toDate ? form.date.toDate().toISOString().slice(0,10) : form.date instanceof Date ? form.date.toISOString().slice(0,10) : ''} onChange={(e) => setForm({ ...form, date: e.target.value ? new Date(e.target.value) as any : null })} style={{ width: '100%', padding: 8 }} />
                 </div>
                 <div>
                   <label>Description (optional)</label>
@@ -309,7 +310,7 @@ export default function ExpensesPage() {
               <p>Are you sure you want to delete this expense in category "{confirmDelete.category}" amount UGX {confirmDelete.amount.toLocaleString()}?</p>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <button onClick={() => setConfirmDelete(null)} disabled={busy}>Cancel</button>
-                <button onClick={confirmDelete} disabled={busy} style={{ background: '#b91c1c', color: '#fff' }}>{busy ? 'Deleting...' : 'Delete'}</button>
+                <button onClick={doDelete} disabled={busy} style={{ background: '#b91c1c', color: '#fff' }}>{busy ? 'Deleting...' : 'Delete'}</button>
               </div>
             </div>
           </div>
