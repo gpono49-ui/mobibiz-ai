@@ -28,6 +28,6 @@ function initFirebase() {
 }
 
 export const firebase = initFirebase();
-export const auth = getAuth(firebase as any);
-export const db = getFirestore(firebase as any);
-export const functions = getFunctions(firebase as any);
+export const auth = getAuth(typeof window !== 'undefined' ? firebase as any : undefined as any);
+export const db = getFirestore(typeof window !== 'undefined' ? firebase as any : undefined as any);
+export const functions = getFunctions(typeof window !== 'undefined' ? firebase as any : undefined as any);
